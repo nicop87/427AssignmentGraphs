@@ -41,7 +41,7 @@ def analyze(graph):
         results["average shortest path length"] = "The graph is not connected"
 
 
-    print("The results of analyzing the given graph:")
+    print("====  Results Of Analyzing Graph  ====")
     print(f"There are {results['connected components']} connected components in the graph.")
     if results[has_cycle]:
         print('There is a cycle.')
