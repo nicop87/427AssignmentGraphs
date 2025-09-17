@@ -7,16 +7,16 @@ def analyze(graph):
     results = {}
 
     # Connected Components
-    components = list(nx.weakly_connected_components(graph))
+    components = list(nx.connected_components(graph))
+
     # Puts the results into our results dict
-    results["connected components"] = components
+    results["connected components"] = len(components)
 
 
     # Cycle Determination 
     try:
         # Boolean check to see if a cycle exists
-        Ugraph = graph.to_undirected()
-        nx.find_cycle(graph, orientation="original")
+        nx.find_cycle(graph)
         has_cycle = True
     except nx.NetworkXNoCycle: 
         #if the cycle check returns an error 
@@ -24,27 +24,29 @@ def analyze(graph):
     results['has cycle'] = has_cycle
 
     # Isolated nodes
-    isolated = []
-    for n in graph.nodes:
-        # Checks every node if there are no incoming or outgoing edges
-        if graph.in_degree(n) == 0 and graph.out_degree(n):
-            isolated.append(n)
-    results["isolated nodes"] == isolated
+    results["isolated nodes"] = list(nx.isolates(graph))
 
     # Graph density
     results["density"] = nx.density(graph)
 
     # Average shortest path length
         #checking to see if the graph is connected 
-    if nx.is_weakly_connected(graph):
-        Ugraph = graph.to_undirected()
+    if nx.is_connected(graph):
         #this allows us to get the shortest path without caring about direction
-        avg_short = nx.average_shortest_path_length(Ugraph)
+        avg_short = nx.average_shortest_path_length(graph)
         results["average shortest path length"] = avg_short
     else:
         #this is if there are any isolated nodes
         results["average shortest path length"] = "The graph is not connected"
 
 
-    return results
+    print("====  Results Of Analyzing Graph  ====")
+    print(f"There are {results['connected components']} connected components in the graph.")
+    if results['has_cycle']:
+        print('There is a cycle.')
+    else:
+        print("There is no cycle.")
+    print(f"There are {len(results['isolated nodes'])} isolated nodes in the graph.")
+    print(f"The graph has a density of {results['density']}.")
+    print(f"The average shortest path of the graph is {results['average shortest path length']}.")
 
