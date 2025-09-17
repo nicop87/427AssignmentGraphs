@@ -9,7 +9,7 @@ def analyze(graph):
     # Connected Components
     components = list(nx.weakly_connected_components(graph))
     # Puts the results into our results dict
-    results["connected components"] = components
+    results["connected components"] = len(components)
 
 
     # Cycle Determination 
@@ -24,12 +24,7 @@ def analyze(graph):
     results['has cycle'] = has_cycle
 
     # Isolated nodes
-    isolated = []
-    for n in graph.nodes:
-        # Checks every node if there are no incoming or outgoing edges
-        if graph.in_degree(n) == 0 and graph.out_degree(n):
-            isolated.append(n)
-    results["isolated nodes"] == isolated
+    results["isolated nodes"] == list(nx.isolates(graph))
 
     # Graph density
     results["density"] = nx.density(graph)
@@ -46,5 +41,13 @@ def analyze(graph):
         results["average shortest path length"] = "The graph is not connected"
 
 
-    return results
+    print("The results of analyzing the given graph:")
+    print(f"There are {results['connected components']} connected components in the graph.")
+    if results[has_cycle]:
+        print('There is a cycle.')
+    else:
+        print("There is no cycle.")
+    print(f"There are {len(results['isolated nodes'])} isolated nodes in the graph.")
+    print(f"The graph has a density of {results['density']}.")
+    print(f"The average shortest path of the graph is {results['average shortest path length']}.")
 
