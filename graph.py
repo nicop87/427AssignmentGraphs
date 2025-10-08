@@ -1,10 +1,10 @@
 import networkx as nx
+import numpy as np
 import matplotlib.pyplot as plt
 import argparse
 import itertools
 
 def main(argv= None):
-
     # All the arg parser setup to read the 6 difference command line inputs.
     # Some are optional while others exit the program if left out.
     parser = argparse.ArgumentParser(description="Read command line inputs.")
@@ -14,7 +14,13 @@ def main(argv= None):
     parser.add_argument('--analyze', action='store_true', help='Perform structural analysis')
     parser.add_argument('--plot', action='store_true', help='Plot the graph and analysis')
     parser.add_argument('--output', type=str, help='Write out enriched graph to .gml file')
-    args = parser.parse_args(argv)
+    
+    # Checks if the user gave wrong arguments in the command line
+    try:
+        args = parser.parse_args(argv)
+    except SystemExit:
+        print("Invalid argument/parameter, please try again.")
+        exit()
 
     # main graph will be an undirected graph object
     graph = nx.DiGraph()
@@ -28,9 +34,10 @@ def main(argv= None):
             n = int(n_str)
             c = float(c_str)
         except Exception:
-            raise ValueError("--create_random_graph requires integer n and numeric c")
+            print("--create_random_graph requires integer n and numeric c")
+            exit()
         
-        # create graph
+        # create graph using the c log n /n equation
         graph = nx.erdos_renyi_graph(n, c)
     
     # If create_random_graph is not flagged, then use input .gml if passed, otherwise exit program
@@ -38,22 +45,40 @@ def main(argv= None):
         try:
             graph = nx.read_gml(args.input)
         except FileNotFoundError:   # catches and informs user if the file wasn't found
-            raise FileNotFoundError("given input file could not be found")
+            print("given input file could not be found, please try again")
+            exit()
         except Exception:           # catches and informs user if the file found is unusable/malformed
-            raise ValueError("file found, contents incompatible with .gml format")
+            print("file found, contents incompatible with .gml format")
+            exit()
     else:
         print("No input or graph generation specified, please use --input or --create_random_graph. Exiting Program.")
         exit()
 
     # Will run BFS on all the given root nodes, and display each tree on a graph when the --plot flag is triggered
     if args.multi_BFS:
-        print("multiBFS")
         root_count = len(args.multi_BFS)
         # Create a figure with 1 row and 2 columns of plots 
         fig, axes = plt.subplots(1, root_count, figsize=(10, 5))
 
+        # list conversion if not, needs to be consistently a list object and outputting the gml messes with type
+        if not isinstance(axes, (list, np.ndarray)):
+            axes = [axes]
+        else:
+            axes = list(axes)
+
+        # same as above, catches and converts if node names are strings instead of integers
+        mapping = {n:int(n) for n in graph.nodes()}
+        graph = nx.relabel_nodes(graph, mapping)
+
         # Starts going through each root node
         for i in range(root_count):
+
+            # skips this node if it doesn't exist in the graph and removes from the list of roots
+            if not int(args.multi_BFS[i]) in graph.nodes():
+                print(f"Root node {args.multi_BFS[i]} does not exist, skipping in bfs.")
+                args.multi_BFS.remove(args.multi_BFS[i])
+                i = i-1
+                continue
 
             # Finds all the shortest paths and the bfs tree structure
             levels = dict(nx.single_source_shortest_path_length(graph, int(args.multi_BFS[i])))
@@ -82,7 +107,50 @@ def main(argv= None):
         plt.show()
 
     if args.analyze:
-        print("analyze")
+        # Results of each check
+        results = {}
+
+        # Connected Components
+        components = list(nx.connected_components(graph))
+
+        # Puts the results into our results dict
+        results["connected components"] = len(components)
+
+        # Cycle Determination 
+        try:
+            # Boolean check to see if a cycle exists
+            nx.find_cycle(graph)
+            has_cycle = True
+        except nx.NetworkXNoCycle: 
+            #if the cycle check returns an error 
+            has_cycle = False
+        results['has_cycle'] = has_cycle
+
+        # Isolated nodes
+        results["isolated nodes"] = list(nx.isolates(graph))
+
+        # Graph density
+        results["density"] = nx.density(graph)
+
+        # Average shortest path length
+            #checking to see if the graph is connected 
+        if nx.is_connected(graph):
+            #this allows us to get the shortest path without caring about direction
+            avg_short = nx.average_shortest_path_length(graph)
+            results["average shortest path length"] = avg_short
+        else:
+            #this is if there are any isolated nodes
+            results["average shortest path length"] = "none. The graph is not fully connected, includes isolated node(s)"
+
+        print("====  Results Of Analyzing Graph  ====")
+        print(f"There are {results['connected components']} connected components in the graph.")
+        if results['has_cycle']:
+            print('There is at least one cycle.')
+        else:
+            print("There is no cycle.")
+        print(f"There are {len(results['isolated nodes'])} isolated nodes in the graph.")
+        print(f"The graph has a density of {results['density']}.")
+        print(f"The average shortest path of the graph is {results['average shortest path length']}.")
 
     if args.plot:
         # Moves the graph around to be more spacious
@@ -132,56 +200,6 @@ def main(argv= None):
         nx.set_node_attributes(graph, "False", name="isolated")
         nx.set_node_attributes(graph, {n: "True" for n in isolated_nodes}, name="isolated")
         nx.write_gml(graph, f"{args.output}")
-    
-    # ANALYZE SECTION
-
-    # Results of each check
-    results = {}
-
-    # Connected Components
-    components = list(nx.connected_components(graph))
-
-    # Puts the results into our results dict
-    results["connected components"] = len(components)
-
-
-    # Cycle Determination 
-    try:
-        # Boolean check to see if a cycle exists
-        nx.find_cycle(graph)
-        has_cycle = True
-    except nx.NetworkXNoCycle: 
-        #if the cycle check returns an error 
-        has_cycle = False
-    results['has cycle'] = has_cycle
-
-    # Isolated nodes
-    results["isolated nodes"] = list(nx.isolates(graph))
-
-    # Graph density
-    results["density"] = nx.density(graph)
-
-    # Average shortest path length
-        #checking to see if the graph is connected 
-    if nx.is_connected(graph):
-        #this allows us to get the shortest path without caring about direction
-        avg_short = nx.average_shortest_path_length(graph)
-        results["average shortest path length"] = avg_short
-    else:
-        #this is if there are any isolated nodes
-        results["average shortest path length"] = "The graph is not connected"
-
-
-    print("====  Results Of Analyzing Graph  ====")
-    print(f"There are {results['connected components']} connected components in the graph.")
-    if results['has_cycle']:
-        print('There is a cycle.')
-    else:
-        print("There is no cycle.")
-    print(f"There are {len(results['isolated nodes'])} isolated nodes in the graph.")
-    print(f"The graph has a density of {results['density']}.")
-    print(f"The average shortest path of the graph is {results['average shortest path length']}.")
-
 
 if __name__ == "__main__":
     main()
